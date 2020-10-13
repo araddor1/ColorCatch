@@ -22,14 +22,14 @@ class ColorCatchGame:
         game_thread.join()
 
     def stage_color_picker(self, user):
-        self.api.send_text(msgs.PICK_COLOR)
-        self.api.send_text(user + " ITS YOUR TURN")
+        self.api.send_text(msgs.PICK_COLOR, user)
+        self.api.send_text_to_all(" ITS " + user['first_name'] + "TURN", but_not_to=user)
         while self.api.img_q_size() == 0:
             continue
         img = self.api.get_last_img()
         color_img = self.get_color_img(self.get_main_color(img))
-        self.api.send_text(msgs.LOOKING_FOR)
-        self.api.send_photo(color_img)
+        self.api.send_text_to_all(msgs.LOOKING_FOR)
+        self.api.send_photo_to_all(color_img)
 
     def game_manager(self):
         while self.api.get_num_users() < 2:

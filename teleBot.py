@@ -9,7 +9,7 @@ from collections import deque
 class TeleBot(ConnectAPI):
     def __init__(self, start_msg):
         self.token = self.init_token()
-        self.img_q = deque()
+        self.imgs = {}
         self.start_msg = start_msg
         self.users = []
         self.bot = None
@@ -42,11 +42,10 @@ class TeleBot(ConnectAPI):
         if self.bot is None:
             self.init_class_attr(update, context)
         id = context.bot.getFile(update.message.photo[0].file_id)
-        print(id)
         resp = urllib.request.urlopen(id['file_path'])
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        self.img_q.append(image)
+        self.imgs[self.update.effective_chat.id] = image
 
     def start_connection(self):
         print("starting connection to Bot")
@@ -73,11 +72,12 @@ class TeleBot(ConnectAPI):
             user = self.update.effective_chat.id
         self.bot.send_message(chat_id=user['id'], text=text)
 
-    def get_last_img(self):
-        return self.img_q.popleft()
+    def get_img_from_user(self, user):
+        while not user["id"] in self.imgs:
+            continue
+        return self.imgs[user['id']]
 
-    def img_q_size(self):
-        return len(self.img_q)
+
 
     def get_num_users(self):
         return len(self.users)

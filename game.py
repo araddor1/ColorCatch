@@ -7,9 +7,10 @@ import time
 import msgs
 
 class ColorCatchGame:
-    def __init__(self, api: ConnectAPI):
+    def __init__(self, api: ConnectAPI, players = 2):
         self.api = api
         self.cur_color = 0
+        self.players =players
         self.main_game()
         return
 
@@ -24,15 +25,13 @@ class ColorCatchGame:
     def stage_color_picker(self, user):
         self.api.send_text(msgs.PICK_COLOR, user)
         self.api.send_text_to_all(" ITS " + user['first_name'] + "TURN", but_not_to=user)
-        while self.api.img_q_size() == 0:
-            continue
-        img = self.api.get_last_img()
+        img = self.api.get_img_from_user(user)
         color_img = self.get_color_img(self.get_main_color(img))
         self.api.send_text_to_all(msgs.LOOKING_FOR)
         self.api.send_photo_to_all(color_img)
 
     def game_manager(self):
-        while self.api.get_num_users() < 2:
+        while self.api.get_num_users() <  self.players:
             continue
         self.api.get_input()
         for user in self.api.users:

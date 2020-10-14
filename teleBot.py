@@ -57,15 +57,21 @@ class TeleBot(ConnectAPI):
         dp.add_handler(message_handler)
         updater.start_polling()
 
-    def send_photo_to_all(self, img):
+    def send_photo_to_all(self, img , but_not_to = None):
         cv2.imwrite("temp/temp_send.jpeg", img)
         for user in self.users:
-            self.bot.send_photo(chat_id=user['id'], photo=open('temp/temp_send.jpeg', 'rb'))
+            if user != but_not_to:
+                self.bot.send_photo(chat_id=user['id'], photo=open('temp/temp_send.jpeg', 'rb'))
 
     def send_text_to_all(self, text , but_not_to=None):
         for user in self.users:
             if user != but_not_to:
                 self.bot.send_message(chat_id=user['id'], text=text)
+
+    def get_name_by_id(self, id):
+        for user in self.users:
+            if id == user['id']:
+                return user['first_name'] + " " + user['last_name']
 
     def send_text(self, text, user=None):
         if user is None:
@@ -77,7 +83,8 @@ class TeleBot(ConnectAPI):
             continue
         return self.imgs[user['id']]
 
-
+    def clear_images(self):
+        self.imgs.clear()
 
     def get_num_users(self):
         return len(self.users)

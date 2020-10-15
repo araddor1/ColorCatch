@@ -1,21 +1,17 @@
-from teleBot import *
-import cv2
+from ConnectAPI import *
 import numpy as np
-import logging
 import threading
-import time
+import cv2
 import msgs
 import time
-import operator
 
-
-
+font = cv2.FONT_HERSHEY_SIMPLEX
 
 class ColorCatchGame:
-    def __init__(self, api: TeleBot, players = 2):
+    def __init__(self, api: ConnectAPI, min_players=2):
         self.api = api
         self.cur_color = 0
-        self.players = players
+        self.min_players = min_players
         self.rates = {}
         self.main_game()
         return
@@ -30,47 +26,69 @@ class ColorCatchGame:
 
     def countdown(self, t):
         while t:
-            mins, secs = divmod(t, 60)
-            timeformat = '{:02d}:{:02d}'.format(mins, secs)
-            if secs % 10 == 0:
-                self.api.send_text_to_all(timeformat)
+            timeformat = '{:02d}'.format(t)
+            if t % 10 == 0:
+                self.api.send_text_to_all(timeformat + msgs.COUNTDOWN)
             time.sleep(1)
             t -= 1
 
-    def connect_image(self,image_a,image_b):
-        return cv2.vconcat([image_a, image_b])
+    def create_winner_image(self,image_a,image_b):
+        image_a = cv2.resize(image_a, (100,100), interpolation=cv2.INTER_AREA)
+        image_b = cv2.resize(image_b, (100, 100), interpolation=cv2.INTER_AREA)
+        connected_image = cv2.vconcat([image_a, image_b])
+        return connected_image
+
+    def create_result_image(self):
+        length = len(self.rates)
+        if length > 7:
+            length = 7
+        img_size = 200
+        res_img = np.zeros((img_size, img_size * length,3))
+        cur_num = 0
+
+        for user_id , rate in self.rates:
+                cur_img = self.api.imgs[user_id]
+                cur_img_res = cv2.resize(cur_img, (img_size,img_size), interpolation=cv2.INTER_AREA)
+                cur_img_res = cv2.putText(cur_img_res, str(cur_num + 1), (75, 75), font, 1, (255, 0, 0),3, cv2.LINE_AA)
+                if cur_num <= length:
+                    res_img[0:img_size, cur_num * img_size:(cur_num + 1) * img_size] = cur_img_res
+                cur_num += 1
+        return res_img
+
 
     def stage_winner_choose(self, chosing_user , target_color , target_img):
+        self.rates={}
         for user_id, img in self.api.imgs.items():
-            #if user != chosing_user:
-            cur_main_color = self.get_main_color(img)
-            self.rates[user_id] = self.close_hue_rank(target_color, cur_main_color)
-        max_user_id = max(self.rates.items(), key=operator.itemgetter(1))[0]
+            if user_id != chosing_user['id']:
+                cur_main_color = self.get_main_color(img)
+                self.rates[user_id] = self.close_hue_rank(target_color, cur_main_color)
+        self.rates = sorted(self.rates.items(), key=lambda x: x[1])
+        result_image = self.create_result_image()
+        self.api.send_photo_to_all(result_image)
+        max_user_id = self.rates[0][0]
         self.api.send_text_to_all(msgs.WINNER_IS)
         self.api.send_text_to_all(self.api.get_name_by_id(max_user_id))
-        winner_send = self.connect_image(target_img, self.api.imgs[max_user_id])
-        self.api.send_photo_to_all(winner_send)
 
 
     def stage_color_picker(self, user):
         self.api.send_text(msgs.PICK_COLOR, user)
-        self.api.send_text_to_all(" ITS " + user['first_name'] + "TURN", but_not_to=user)
+        self.api.send_text_to_all(" ITS " + user['first_name'] + " TURN", but_not_to=user)
         img = self.api.get_img_from_user(user)
         color = self.get_main_color(img)
         color_img = self.get_color_img(color)
         self.api.send_text_to_all(msgs.LOOKING_FOR)
-        self.api.send_photo_to_all(color_img, user)
-        return color , img
+        self.api.send_photo_to_all(color_img)
+        return color, img
 
     def game_manager(self):
-        while self.api.get_num_users() < self.players:
+        while len(self.api.users) < self.min_players:
             continue
-        self.api.get_input()
         for user in self.api.users:
-            cur_color , cur_img = self.stage_color_picker(user)
+            cur_color, cur_img = self.stage_color_picker(user)
             self.countdown(30)
             self.stage_winner_choose(user, cur_color , cur_img)
             self.api.clear_images()
+        self.api.send_text_to_all(msgs.END_OF_GAME)
         return
 
     @staticmethod
@@ -99,9 +117,6 @@ class ColorCatchGame:
         h1 = color_1[0]
         dh = min(abs(h1 - h0), 360 - abs(h1 - h0)) / 180.0
         return dh
-
-    def color_choose_state(self, img):
-        self.cur_color = self.get_main_color(img)
 
 
 

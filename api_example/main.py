@@ -1,5 +1,5 @@
 from game import *
-from teleBot import *
+from api_example.teleBot import *
 
 def main():
     my_bot = TeleBot("Welcome to ColorCatch Game")

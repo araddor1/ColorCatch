@@ -1,7 +1,7 @@
 # ColorCatch
 MultiPlayer Virtual ColorCatch game!
 
-##The Game
+## The Game
 Users connects to the game. 
 in each turn, one player send an image of an object and the game calculate the color of the center of the img and sends it to all other users.
 they have a limited time to send back a photo with a similiar color in it's center.
